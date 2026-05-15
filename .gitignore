@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and secrets
+.env
+backend/.env
+frontend/.env
+*.local
+
+# Local databases, uploads, model caches, and runtime state
+data/
+backend/data/
+backend/uploads/
+frontend/uploads/
+uploads/
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.parquet
+
+# Hugging Face / model / embedding caches
+.hf-cache/
+backend/.hf-cache/
+frontend/.hf-cache/
+.cache/
+
+# Logs and process files
+*.log
+*.pid
+backend/local-uvicorn.pid
+celerybeat-schedule
+
+# PDF and generated research artifacts
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Docker local overrides
+docker-compose.override.yml
