@@ -40,6 +40,12 @@ Working now:
 - Cross-paper analysis endpoints for contradictions, unexplored connections, and landscape analysis.
 - Project documentation for model/method responsibilities in `MODEL_METHOD_MAP.md`.
 
+GPU note:
+
+- `docker-compose.yml` is now GPU-ready for Ollama with `gpus: all`.
+- The GPU host must have NVIDIA drivers, Docker, and NVIDIA Container Toolkit installed.
+- On a GPU machine, Ollama should report non-zero `size_vram` from `GET /api/ps` after the model loads.
+
 Known local CPU behavior:
 
 - First Gemma/Ollama load can take 1-2 minutes.
@@ -89,6 +95,52 @@ scientific-discovery-copilot/
 - Containers: Docker and Docker Compose
 - Tests/linting: pytest, pytest-asyncio, ruff, mypy
 
+## GPU Ollama Setup
+
+The recommended fast setup is to run Ollama on an NVIDIA GPU machine and point the backend to it.
+
+### Option A: Run Ollama GPU with Docker Compose
+
+On the GPU machine:
+
+1. Install NVIDIA drivers.
+2. Install Docker Desktop or Docker Engine.
+3. Install NVIDIA Container Toolkit.
+4. Clone this repo.
+5. Start Ollama:
+
+```powershell
+docker compose up -d ollama
+```
+
+6. Pull the model:
+
+```powershell
+docker exec -it scientific-discovery-copilot-ollama-1 ollama pull gemma4:e2b
+```
+
+7. Verify GPU use after a request:
+
+```powershell
+Invoke-RestMethod http://localhost:11434/api/ps
+```
+
+Expected: `size_vram` should be greater than `0`.
+
+### Option B: Use Your Friend's GPU Ollama Server
+
+If your friend is already running Ollama on a GPU server, use their Ollama URL in `backend/.env`:
+
+```env
+OLLAMA_HOST=http://<FRIEND_GPU_OLLAMA_HOST>:11434
+GEMMA_REASONING_MODEL=gemma4:e2b
+GEMMA_LIGHT_MODEL=gemma4:e2b
+GEMMA_KEEP_ALIVE=30m
+GEMMA_NUM_THREAD=
+```
+
+Important: do not expose Ollama openly to the public internet. Prefer a private network, firewall allowlist, VPN, or SSH tunnel.
+
 ## Using Your Friend's Gemma/Ollama Server
 
 If your friend has Gemma running on a faster machine or GPU server, you do not need to run Gemma locally. Point the backend to their Ollama host.
@@ -134,14 +186,16 @@ Important: Ollama should not be exposed openly on the public internet for long-r
 
 ### 1. Start infrastructure
 
-Run Postgres, Redis, Neo4j, and optionally Ollama:
+Run Postgres, Redis, Neo4j, and GPU Ollama:
 
 ```powershell
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
 docker compose up -d postgres redis neo4j ollama
 ```
 
-If you are using your friend's Gemma/Ollama server, you can skip the local Ollama service:
+This expects an NVIDIA GPU host with NVIDIA Container Toolkit because the Ollama service uses `gpus: all`.
+
+If you are using your friend's remote Gemma/Ollama server, skip the local Ollama service:
 
 ```powershell
 docker compose up -d postgres redis neo4j
@@ -154,7 +208,7 @@ cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\backend
 Copy-Item .env.example .env
 ```
 
-For local Docker Ollama:
+For local GPU Docker Ollama:
 
 ```env
 OLLAMA_HOST=http://localhost:11434
@@ -229,6 +283,8 @@ Full stack:
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
 docker compose up --build
 ```
+
+The full stack expects GPU-enabled Docker because the `ollama` service requests `gpus: all`.
 
 If using a remote Ollama/Gemma server, edit `backend/.env` before starting:
 
@@ -335,4 +391,3 @@ For a friend pulling this repository:
 6. Open Swagger at `http://127.0.0.1:8000/docs`.
 7. Run Streamlit from `frontend/`.
 8. Confirm the sidebar says `Model loaded successfully`.
-
