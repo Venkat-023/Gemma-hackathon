@@ -1,37 +1,8 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: scidb
-      POSTGRES_USER: sci
-      POSTGRES_PASSWORD: password
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  neo4j:
-    image: neo4j:5-community
-    environment:
-      NEO4J_AUTH: neo4j/password
-    volumes:
-      - ./data/neo4j:/data
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-
   ollama:
     image: ollama/ollama:latest
-    gpus: all
     environment:
       OLLAMA_MAX_TRANSFER_STREAMS: 1
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
       - ./data/ollama:/root/.ollama
     ports:
@@ -40,29 +11,15 @@ services:
   backend:
     build: ./backend
     depends_on:
-      - postgres
-      - redis
-      - neo4j
       - ollama
-    env_file:
-      - ./backend/.env
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      GEMMA_FAST_MODEL: gemma4:e2b
+      FAST_USE_MINILM: "0"
+      FAST_SKIP_GEMMA_ON_UPLOAD: "1"
+      FAST_BACKEND_PORT: "8011"
+      ANONYMIZED_TELEMETRY: "False"
     volumes:
-      - ./data/uploads:/app/uploads
-      - ./data/chroma_db:/app/data/chroma_db
+      - ./data:/app/data
     ports:
-      - "8000:8000"
-
-  celery_worker:
-    build: ./backend
-    command: celery -A tasks.paper_processing worker --loglevel=info --concurrency=2
-    depends_on:
-      - backend
-      - redis
-      - postgres
-      - neo4j
-      - ollama
-    env_file:
-      - ./backend/.env
-    volumes:
-      - ./data/uploads:/app/uploads
-      - ./data/chroma_db:/app/data/chroma_db
+      - "8011:8011"

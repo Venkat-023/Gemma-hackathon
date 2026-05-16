@@ -1,393 +1,177 @@
 # Scientific Discovery Copilot
 
-A multi-module scientific discovery backend and lightweight Streamlit test UI for ingesting research papers, extracting scientific structure, building a knowledge graph, finding cross-paper connections, detecting contradictions, and generating explainable research hypotheses with Gemma through Ollama.
+Fast CPU-friendly scientific discovery system for ingesting research papers, extracting concepts, building a knowledge graph, finding cross-paper bridges, and generating research hypotheses with Gemma through Ollama.
 
-This project is built for the Gemma Impact Challenge as a discovery engine, not a chatbot or plain RAG demo.
+This repository now contains the finalized streamlined build. The older heavy Postgres/Neo4j/Celery prototype has been removed from Git. The active product is the working fast backend plus the Streamlit dashboard.
 
-## What It Does
+## Current Features
 
-Scientific Discovery Copilot turns PDF papers into connected scientific evidence:
+- PDF upload and parsing with PyMuPDF.
+- Section-aware paper processing for abstract, methods, results, discussion, conclusion, and general body text.
+- Fast chunking with overlap for semantic retrieval.
+- CPU-first lexical retrieval enabled by default.
+- Optional MiniLM embeddings and ChromaDB retrieval with `FAST_USE_MINILM=1`.
+- Deterministic scientific concept extraction during upload for speed.
+- Optional Gemma/Ollama calls for warmup, chat-style checks, and hypothesis generation.
+- NetworkX `MultiDiGraph` knowledge graph.
+- Paper nodes connected to concept nodes through `MENTIONS` edges.
+- Concept-to-concept relationship edges from the semantic analyzer.
+- Cross-paper bridge detection for concepts appearing across papers.
+- Concept clusters, hub concepts, and research gap scoring.
+- Inter-paper concept visualization: `Paper -> Shared Concept -> Paper`.
+- Dynamic Streamlit dashboard for upload, search, hypotheses, discovery analytics, graph views, and paper inventory.
 
-- Parses uploaded research PDFs with PyMuPDF, with pdfplumber fallback support.
-- Extracts metadata, abstract, sections, references, and page text.
-- Splits papers into semantic chunks with importance scoring.
-- Stores chunks in Postgres and indexes embeddings in ChromaDB.
-- Uses BAAI/bge-large-en-v1.5 embeddings for semantic retrieval.
-- Extracts scientific entities and relationships.
-- Builds paper/entity relationship graphs in Neo4j.
-- Finds unexplored cross-paper connections.
-- Detects contradictions across selected papers.
-- Generates testable hypotheses from retrieved evidence, graph context, research gaps, and cross-domain links.
-- Provides a Streamlit UI for uploading papers, polling processing status, testing Gemma, searching, graph inspection, hypothesis generation, and analysis.
-
-## Current MVP Status
-
-The current build is optimized for local CPU development and hackathon validation.
-
-Working now:
-
-- FastAPI backend with OpenAPI/Swagger.
-- Streamlit frontend in `frontend/`.
-- Local Uvicorn runner for Windows.
-- Docker Compose services for Postgres, Redis, Neo4j, Ollama, backend, and Celery worker.
-- Startup Gemma warm-up endpoint and UI status display.
-- Sidebar Gemma chat check for validating whether the configured model is responding.
-- PDF upload endpoint and paper processing pipeline.
-- Paper listing, details, and processing status polling.
-- Semantic search endpoint.
-- Knowledge graph endpoints.
-- Hypothesis generation endpoint with fast MVP fallback and full Gemma mode.
-- Cross-paper analysis endpoints for contradictions, unexplored connections, and landscape analysis.
-- Project documentation for model/method responsibilities in `MODEL_METHOD_MAP.md`.
-
-GPU note:
-
-- `docker-compose.yml` is now GPU-ready for Ollama with `gpus: all`.
-- The GPU host must have NVIDIA drivers, Docker, and NVIDIA Container Toolkit installed.
-- On a GPU machine, Ollama should report non-zero `size_vram` from `GET /api/ps` after the model loads.
-
-Known local CPU behavior:
-
-- First Gemma/Ollama load can take 1-2 minutes.
-- Once loaded, short checks can respond in a few seconds.
-- Longer scientific answers can still take 60-120 seconds without GPU.
-- The app now keeps Gemma warm with `GEMMA_KEEP_ALIVE=30m`.
-
-## Architecture
+## Project Layout
 
 ```text
 scientific-discovery-copilot/
-├── backend/
-│   ├── api/                 FastAPI app, dependencies, routes
-│   ├── core/                settings, Gemma engine, embeddings, hypothesis orchestration
-│   ├── ingestion/           PDF parsing, metadata, chunking, arXiv/PubMed fetchers
-│   ├── retrieval/           ChromaDB vector store and semantic search
-│   ├── reasoning/           entity extraction, contradiction detection, cross-paper reasoning
-│   ├── graph/               Neo4j graph builder, queries, exporter
-│   ├── models/              SQLAlchemy ORM models
-│   ├── schemas/             Pydantic request/response schemas
-│   ├── tasks/               Celery paper-processing task
-│   ├── tests/               pytest test suite
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── .env.example
-├── frontend/
-│   ├── app.py               Streamlit MVP UI
-│   ├── requirements.txt
-│   └── README.md
-├── docker-compose.yml
-├── MODEL_METHOD_MAP.md
-├── .gitignore
-└── README.md
+|-- backend/
+|   |-- core/
+|   |   |-- fast_gemma.py
+|   |   |-- fast_graph.py
+|   |   |-- pipeline.py
+|   |   `-- semantic_analyzer.py
+|   |-- ingestion/
+|   |   |-- fast_chunker.py
+|   |   `-- fast_parser.py
+|   |-- retrieval/
+|   |   |-- fast_embedder.py
+|   |   `-- fast_vector_store.py
+|   |-- main.py
+|   |-- requirements.txt
+|   |-- run_backend.ps1
+|   `-- Dockerfile
+|-- frontend/
+|   |-- app.py
+|   |-- requirements.txt
+|   `-- README.md
+|-- docker-compose.yml
+|-- .gitignore
+`-- README.md
 ```
 
-## Core Technology Stack
+## Run Locally On CPU
 
-- Backend: FastAPI, Uvicorn, Python 3.11+
-- LLM runtime: Gemma via Ollama
-- Embeddings: sentence-transformers, `BAAI/bge-large-en-v1.5`
-- Vector DB: ChromaDB persistent local store
-- Graph DB: Neo4j Community 5.x
-- Relational DB: PostgreSQL 16 with SQLAlchemy async and asyncpg
-- Queue/cache: Celery, Redis
-- PDF parsing: PyMuPDF primary, pdfplumber fallback
-- UI: Streamlit
-- Containers: Docker and Docker Compose
-- Tests/linting: pytest, pytest-asyncio, ruff, mypy
-
-## GPU Ollama Setup
-
-The recommended fast setup is to run Ollama on an NVIDIA GPU machine and point the backend to it.
-
-### Option A: Run Ollama GPU with Docker Compose
-
-On the GPU machine:
-
-1. Install NVIDIA drivers.
-2. Install Docker Desktop or Docker Engine.
-3. Install NVIDIA Container Toolkit.
-4. Clone this repo.
-5. Start Ollama:
+Start Ollama:
 
 ```powershell
+cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
 docker compose up -d ollama
 ```
 
-6. Pull the model:
+Pull Gemma if needed:
 
 ```powershell
 docker exec -it scientific-discovery-copilot-ollama-1 ollama pull gemma4:e2b
 ```
 
-7. Verify GPU use after a request:
-
-```powershell
-Invoke-RestMethod http://localhost:11434/api/ps
-```
-
-Expected: `size_vram` should be greater than `0`.
-
-### Option B: Use Your Friend's GPU Ollama Server
-
-If your friend is already running Ollama on a GPU server, use their Ollama URL in `backend/.env`:
-
-```env
-OLLAMA_HOST=http://<FRIEND_GPU_OLLAMA_HOST>:11434
-GEMMA_REASONING_MODEL=gemma4:e2b
-GEMMA_LIGHT_MODEL=gemma4:e2b
-GEMMA_KEEP_ALIVE=30m
-GEMMA_NUM_THREAD=
-```
-
-Important: do not expose Ollama openly to the public internet. Prefer a private network, firewall allowlist, VPN, or SSH tunnel.
-
-## Using Your Friend's Gemma/Ollama Server
-
-If your friend has Gemma running on a faster machine or GPU server, you do not need to run Gemma locally. Point the backend to their Ollama host.
-
-1. Ask your friend for their Ollama URL, for example:
-
-```text
-http://192.168.1.50:11434
-```
-
-or for a cloud GPU server:
-
-```text
-http://<gpu-server-ip>:11434
-```
-
-2. Copy the backend environment template:
-
-```powershell
-cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\backend
-Copy-Item .env.example .env
-```
-
-3. Edit `backend/.env`:
-
-```env
-OLLAMA_HOST=http://<FRIEND_OLLAMA_HOST>:11434
-GEMMA_REASONING_MODEL=gemma4:e2b
-GEMMA_LIGHT_MODEL=gemma4:e2b
-GEMMA_KEEP_ALIVE=30m
-GEMMA_NUM_THREAD=
-```
-
-4. If running with the Windows local script, also update `backend/run_local_uvicorn.ps1` or set the environment variable before launch:
-
-```powershell
-$env:OLLAMA_HOST = "http://<FRIEND_OLLAMA_HOST>:11434"
-```
-
-Important: Ollama should not be exposed openly on the public internet for long-running use. Prefer a private LAN, firewall rule, VPN, or SSH tunnel.
-
-## Local Development Setup
-
-### 1. Start infrastructure
-
-Run Postgres, Redis, Neo4j, and GPU Ollama:
-
-```powershell
-cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
-docker compose up -d postgres redis neo4j ollama
-```
-
-This expects an NVIDIA GPU host with NVIDIA Container Toolkit because the Ollama service uses `gpus: all`.
-
-If you are using your friend's remote Gemma/Ollama server, skip the local Ollama service:
-
-```powershell
-docker compose up -d postgres redis neo4j
-```
-
-### 2. Configure backend
-
-```powershell
-cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\backend
-Copy-Item .env.example .env
-```
-
-For local GPU Docker Ollama:
-
-```env
-OLLAMA_HOST=http://localhost:11434
-```
-
-For friend's remote Ollama:
-
-```env
-OLLAMA_HOST=http://<FRIEND_OLLAMA_HOST>:11434
-```
-
-### 3. Install backend dependencies
+Create and install the backend environment:
 
 ```powershell
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\pip install -r requirements.txt
 ```
 
-### 4. Run backend
+Run the backend:
 
 ```powershell
-cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
-.\backend\run_local_uvicorn.ps1
+.\run_backend.ps1
 ```
 
-Backend URLs:
+Backend API:
 
-- Health: `http://127.0.0.1:8000/health`
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- API base: `http://127.0.0.1:8000/api/v1`
-
-When the backend starts, it begins warming Gemma. Check:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/api/v1/agents/model-status
+```text
+http://127.0.0.1:8011
+http://127.0.0.1:8011/docs
 ```
 
-Expected loaded state:
-
-```json
-{
-  "status": "loaded",
-  "message": "Gemma model loaded successfully and is ready for backend functions."
-}
-```
-
-### 5. Run frontend
+Run the frontend:
 
 ```powershell
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\frontend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-streamlit run app.py
+.\.venv\Scripts\pip install -r requirements.txt
+.\.venv\Scripts\streamlit run app.py
 ```
 
-The Streamlit sidebar lets you:
+Frontend:
 
-- Check backend health.
-- See Gemma model status.
-- Manually warm the model.
-- Send a small Gemma chat prompt.
-- Upload papers and test the workflow.
+```text
+http://localhost:8501
+```
 
-## Docker Setup
+## Docker Backend
 
-Full stack:
+The compose file is CPU-first. It starts Ollama and can also run the backend container.
 
 ```powershell
-cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
-docker compose up --build
+docker compose up -d ollama
+docker compose up --build backend
 ```
 
-The full stack expects GPU-enabled Docker because the `ollama` service requests `gpus: all`.
+The backend container talks to Ollama through `http://ollama:11434`.
 
-If using a remote Ollama/Gemma server, edit `backend/.env` before starting:
+## Environment Flags
 
-```env
-OLLAMA_HOST=http://<FRIEND_OLLAMA_HOST>:11434
-```
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` locally, `http://ollama:11434` in Docker | Ollama server URL |
+| `GEMMA_FAST_MODEL` | `gemma4:e2b` | Gemma model used by the fast pipeline |
+| `FAST_BACKEND_PORT` | `8011` | Backend API port |
+| `FAST_USE_MINILM` | `0` | Set to `1` to use MiniLM embeddings and ChromaDB |
+| `FAST_SKIP_GEMMA_ON_UPLOAD` | `1` | Keeps uploads fast by using deterministic extraction |
+| `HF_HOME` | `backend/.hf-cache` | Hugging Face cache path |
 
-Then run:
+## API Highlights
 
-```powershell
-docker compose up --build backend celery_worker postgres redis neo4j
-```
+- `GET /health` - backend health.
+- `GET /model-status` - Ollama/Gemma reachability.
+- `POST /warmup` - loads Gemma and confirms it responds.
+- `POST /upload` - upload and process a PDF.
+- `POST /search` - semantic paper search.
+- `POST /hypotheses` - generate hypotheses from retrieved evidence and graph context.
+- `GET /discovery` - combined bridges, gaps, hubs, clusters, and graph stats.
+- `GET /graph/export` - graph JSON for visualization.
+- `GET /graph/bridges` - cross-paper bridge concepts.
+- `GET /graph/gaps` - candidate research gaps.
+- `GET /graph/hubs` - central concepts.
+- `GET /papers` - processed paper inventory.
 
-## Main API Endpoints
+## What Each Model Or Method Does
 
-Papers:
+- Gemma through Ollama: model warmup, hypothesis generation, and optional LLM-backed scientific reasoning.
+- Deterministic semantic analyzer: fast upload-time entity, relationship, theme, and gap extraction.
+- Lexical retrieval: default CPU-safe search path with no model download.
+- MiniLM plus ChromaDB: optional embedding retrieval path for stronger semantic search.
+- NetworkX graph engine: concept graph, bridge analytics, hub scoring, clusters, paper neighborhoods, and graph export.
+- Streamlit: manual product testing, graph visualization, and result inspection.
 
-- `POST /api/v1/papers/upload`
-- `POST /api/v1/papers/arxiv`
-- `GET /api/v1/papers/`
-- `GET /api/v1/papers/{paper_id}`
-- `GET /api/v1/papers/{paper_id}/status`
+## MVP
 
-Search:
+The MVP demonstrates a complete local scientific discovery loop:
 
-- `POST /api/v1/search`
+1. Upload two or more research papers.
+2. Extract concepts and relationships.
+3. Build a knowledge graph.
+4. Search across paper evidence.
+5. Find shared concepts between papers.
+6. Surface bridge concepts, gaps, hubs, and clusters.
+7. Generate hypotheses grounded in the processed corpus.
+8. Visualize paper-to-concept and inter-paper concept graphs.
 
-Hypotheses:
+## Planned WOW Factors
 
-- `POST /api/v1/hypothesis/generate`
-- `POST /api/v1/hypothesis/{hypothesis_id}/explain`
-- `GET /api/v1/hypotheses/`
-- `POST /api/v1/hypotheses/{id}/upvote`
+- Remote GPU Ollama support for larger Gemma models.
+- Streaming hypothesis generation with progress and time estimates.
+- Richer contradiction detection using paired evidence claims.
+- Citation-aware novelty scoring.
+- Exportable graph snapshots for demos and reports.
+- Persistent project/session store beyond the current local JSON and Chroma state.
+- Better biomedical NER integration when GPU or higher-memory CPU environments are available.
 
-Graph:
+## Notes For Collaborators
 
-- `GET /api/v1/graph/{paper_id}`
-- `GET /api/v1/graph/entity/{entity_name}`
-
-Analysis:
-
-- `POST /api/v1/analysis/contradictions`
-- `POST /api/v1/analysis/connections`
-- `POST /api/v1/analysis/landscape`
-
-Gemma checks:
-
-- `GET /api/v1/agents/model-status`
-- `POST /api/v1/agents/model-warmup`
-- `POST /api/v1/agents/chat`
-
-## What Each Model/Method Does
-
-See `MODEL_METHOD_MAP.md` for the detailed map. Short version:
-
-- Gemma via Ollama: hypothesis generation, contradiction analysis, gap analysis, debate, explanation, optional entity refinement.
-- BAAI/bge-large-en-v1.5: production semantic embeddings for ChromaDB search.
-- all-MiniLM-L6-v2: lightweight sentence embeddings for semantic chunk splitting.
-- PyMuPDF/pdfplumber: PDF text and structure extraction.
-- ChromaDB: vector search over paper chunks.
-- Neo4j: entity and paper knowledge graph.
-- Postgres: paper, chunk, entity, relationship, contradiction, and hypothesis records.
-- Redis/Celery: asynchronous paper processing.
-
-## Planned WOW Features
-
-The MVP already demonstrates the discovery workflow. Planned additions for the final product:
-
-- GPU-backed Gemma inference for much faster full hypothesis generation.
-- Streaming SSE/WebSocket responses for long Gemma tasks.
-- Visual Cytoscape/D3 graph explorer in the frontend.
-- Cross-domain bridge scoring between papers that do not cite each other.
-- Contradiction resolution planner that proposes experiments to resolve conflicting claims.
-- Multi-agent debate UI showing domain expert, methodology critic, devil's advocate, cross-domain linker, and synthesizer turns.
-- Research landscape timeline with milestones, paradigm shifts, and open questions.
-- Batch paper ingestion from arXiv/PubMed.
-- Better scientific NER with scispaCy UMLS linking enabled in production mode.
-- Citation trail visualization for every generated hypothesis.
-
-## Git Hygiene
-
-The repository intentionally ignores:
-
-- `.env` files
-- Python virtual environments
-- local Docker volumes in `data/`
-- uploads and PDFs
-- Chroma/Postgres/Neo4j/Ollama runtime data
-- Hugging Face/model caches
-- Python cache folders
-- logs and PID files
-
-This keeps Git clean and lets collaborators pull source code without downloading local databases or model files.
-
-## Quick Handoff Checklist
-
-For a friend pulling this repository:
-
-1. Clone the repo.
-2. Copy `backend/.env.example` to `backend/.env`.
-3. Set `OLLAMA_HOST` to their local or remote Ollama server.
-4. Start Postgres, Redis, and Neo4j with Docker Compose.
-5. Run the backend with `backend/run_local_uvicorn.ps1` or Docker.
-6. Open Swagger at `http://127.0.0.1:8000/docs`.
-7. Run Streamlit from `frontend/`.
-8. Confirm the sidebar says `Model loaded successfully`.
+- Do not commit `.venv`, `.hf-cache`, `data`, uploaded PDFs, or local model files.
+- The old `fast_backend/` and `fast_frontend/` folders are ignored if they remain locally from development.
+- Use `backend/` and `frontend/` as the source of truth.

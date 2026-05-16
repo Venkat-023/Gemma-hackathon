@@ -13,6 +13,8 @@ htmlcov/
 venv/
 env/
 ENV/
+fast_backend/
+fast_frontend/
 
 # Environment and secrets
 .env
