@@ -1,25 +1,182 @@
 # Scientific Discovery Copilot
 
-Fast CPU-friendly scientific discovery system for ingesting research papers, extracting concepts, building a knowledge graph, finding cross-paper bridges, and generating research hypotheses with Gemma through Ollama.
+## Problem Statement
 
-This repository now contains the finalized streamlined build. The older heavy Postgres/Neo4j/Celery prototype has been removed from Git. The active product is the working fast backend plus the Streamlit dashboard.
+Modern science is drowning in papers but starving for synthesis.
 
-## Current Features
+Every week, thousands of research papers introduce new methods, biomarkers, datasets, contradictions, and unexplored connections. A human researcher can read a handful deeply, but the real breakthroughs often hide between papers: two studies that never cite each other, a method from one domain that could unlock another, or a weak signal repeated across disconnected literature.
 
-- PDF upload and parsing with PyMuPDF.
-- Section-aware paper processing for abstract, methods, results, discussion, conclusion, and general body text.
-- Fast chunking with overlap for semantic retrieval.
-- CPU-first lexical retrieval enabled by default.
-- Optional MiniLM embeddings and ChromaDB retrieval with `FAST_USE_MINILM=1`.
-- Deterministic scientific concept extraction during upload for speed.
-- Optional Gemma/Ollama calls for warmup, chat-style checks, and hypothesis generation.
-- NetworkX `MultiDiGraph` knowledge graph.
-- Paper nodes connected to concept nodes through `MENTIONS` edges.
-- Concept-to-concept relationship edges from the semantic analyzer.
-- Cross-paper bridge detection for concepts appearing across papers.
-- Concept clusters, hub concepts, and research gap scoring.
-- Inter-paper concept visualization: `Paper -> Shared Concept -> Paper`.
-- Dynamic Streamlit dashboard for upload, search, hypotheses, discovery analytics, graph views, and paper inventory.
+**Scientific Discovery Copilot turns research papers into an active discovery engine.** It does not behave like a chatbot that answers from PDFs. It parses papers, extracts scientific concepts, builds a concept graph, detects cross-paper bridges, surfaces research gaps, and generates testable hypotheses grounded in evidence.
+
+The goal is simple and ambitious: help researchers move from "What did these papers say?" to **"What should we investigate next?"**
+
+## What We Built
+
+This repository contains the finalized fast MVP of the Scientific Discovery Copilot, optimized to run locally on a CPU while still using Gemma through Ollama for reasoning tasks.
+
+We originally explored a heavier architecture with PostgreSQL, Neo4j, Celery, Redis, and larger model paths. During testing, the fully heavy stack was too slow for local CPU-only demos, so we rebuilt the product around a faster working pipeline without losing the core discovery value.
+
+The current version is clean, practical, and demo-ready:
+
+- A FastAPI backend for paper ingestion, search, graph analytics, and hypothesis generation.
+- A Streamlit frontend for manual testing, paper upload, graph visualization, and discovery workflows.
+- A CPU-first Ollama/Gemma setup.
+- A local graph engine powered by NetworkX.
+- A fast deterministic semantic analyzer for upload-time concept and relationship extraction.
+- Optional embedding-based retrieval for stronger semantic search when the machine can support it.
+
+## Core Product Capabilities
+
+### 1. Paper Upload And Processing
+
+The backend accepts PDF research papers, parses them with PyMuPDF, extracts text by section, chunks the paper, and stores searchable evidence.
+
+Current processing extracts:
+
+- Title and paper metadata where available.
+- Abstract/body/section text.
+- Chunked evidence passages.
+- Scientific concepts.
+- Concept relationships.
+- Themes, gaps, and discovery signals.
+- Paper-level graph nodes.
+
+### 2. Fast Scientific Concept Extraction
+
+To keep paper uploads fast on CPU, the MVP uses a deterministic scientific semantic analyzer during ingestion.
+
+It identifies useful scientific concepts such as:
+
+- Diseases and conditions.
+- Methods and algorithms.
+- Biomarkers and measurements.
+- Medical/scientific concepts.
+- Dataset and evaluation terms.
+- Cross-domain technical signals.
+
+It also creates concept-to-concept relationship edges so the system can reason over more than plain text.
+
+### 3. Knowledge Graph
+
+The project builds a NetworkX `MultiDiGraph` where papers and concepts become connected nodes.
+
+Graph layers include:
+
+- `PAPER` nodes for uploaded research papers.
+- Concept nodes for extracted scientific entities.
+- `MENTIONS` edges from papers to concepts.
+- Relationship edges between concepts.
+- Bridge flags for concepts appearing across multiple papers.
+- Cluster nodes for semantic concept communities.
+
+This graph is exported as JSON for the frontend and can be visualized directly in the Streamlit app.
+
+### 4. Cross-Paper Bridge Discovery
+
+The system detects concepts that appear across multiple papers and uses them as bridges between otherwise separate studies.
+
+This is one of the main discovery features:
+
+```text
+Paper A -> Shared Concept -> Paper B
+```
+
+Instead of only showing "similar documents", the app shows **why** papers are connected through scientific concepts.
+
+### 5. Research Gap Detection
+
+The graph engine searches for concept pairs that co-occur but do not yet have strong direct relationship edges.
+
+These become candidate research gaps:
+
+- Concepts that appear together but are not directly studied.
+- Weakly connected ideas across papers.
+- Possible unexplored mechanisms.
+- Places where a hypothesis could be formed.
+
+### 6. Hub Concepts And Clusters
+
+The graph engine computes central concepts using graph analytics.
+
+The dashboard surfaces:
+
+- Hub concepts with high graph importance.
+- Concept clusters.
+- Bridge concepts across papers.
+- Paper neighborhoods.
+- Research gap candidates.
+
+This helps a researcher quickly understand the structure of a small research corpus.
+
+### 7. Search And Evidence Retrieval
+
+The backend supports search over processed paper chunks.
+
+The default path is CPU-friendly lexical retrieval so the app remains responsive without GPU support. For stronger semantic retrieval, the project can optionally enable MiniLM embeddings and ChromaDB with:
+
+```powershell
+$env:FAST_USE_MINILM="1"
+```
+
+### 8. Gemma-Powered Hypothesis Generation
+
+Gemma through Ollama is used for higher-level reasoning tasks such as hypothesis generation and model readiness checks.
+
+The hypothesis pipeline combines:
+
+- User research query.
+- Retrieved paper chunks.
+- Graph bridges.
+- Research gaps.
+- Hub concepts.
+- Paper-level context.
+
+The output is designed to be more than a summary. It proposes testable research directions grounded in the uploaded papers.
+
+### 9. Dynamic Streamlit Dashboard
+
+The frontend provides a practical researcher-facing interface:
+
+- Upload research papers.
+- Check backend and Gemma status.
+- Run search queries.
+- Generate hypotheses.
+- Explore discovery analytics.
+- View graph exports.
+- Visualize paper-to-concept and inter-paper concept connections.
+- Inspect processed papers.
+
+The dashboard is intentionally simple, fast, and demo-friendly.
+
+## Architecture
+
+```text
+PDF Papers
+   |
+   v
+FastAPI Backend
+   |
+   |-- PyMuPDF parser
+   |-- section-aware chunker
+   |-- deterministic semantic analyzer
+   |-- lexical / optional embedding retrieval
+   |-- NetworkX graph engine
+   |-- Gemma via Ollama
+   |
+   v
+Discovery Outputs
+   |
+   |-- searchable evidence
+   |-- concept graph
+   |-- bridges
+   |-- gaps
+   |-- hubs
+   |-- clusters
+   |-- hypotheses
+   |
+   v
+Streamlit Frontend
+```
 
 ## Project Layout
 
@@ -50,43 +207,38 @@ scientific-discovery-copilot/
 `-- README.md
 ```
 
-## Run Locally On CPU
+## How To Run
 
-Start Ollama:
+### 1. Start Ollama On CPU
 
 ```powershell
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot
 docker compose up -d ollama
 ```
 
-Pull Gemma if needed:
+Pull Gemma if it is not already available:
 
 ```powershell
 docker exec -it scientific-discovery-copilot-ollama-1 ollama pull gemma4:e2b
 ```
 
-Create and install the backend environment:
+### 2. Run The Backend
 
 ```powershell
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\backend
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
-```
-
-Run the backend:
-
-```powershell
 .\run_backend.ps1
 ```
 
-Backend API:
+Backend URLs:
 
 ```text
 http://127.0.0.1:8011
 http://127.0.0.1:8011/docs
 ```
 
-Run the frontend:
+### 3. Run The Frontend
 
 ```powershell
 cd C:\Users\admin\Desktop\Gemma4\scientific-discovery-copilot\frontend
@@ -95,7 +247,7 @@ python -m venv .venv
 .\.venv\Scripts\streamlit run app.py
 ```
 
-Frontend:
+Frontend URL:
 
 ```text
 http://localhost:8501
@@ -103,75 +255,86 @@ http://localhost:8501
 
 ## Docker Backend
 
-The compose file is CPU-first. It starts Ollama and can also run the backend container.
+The compose setup is CPU-first and includes Ollama plus the backend service.
 
 ```powershell
 docker compose up -d ollama
 docker compose up --build backend
 ```
 
-The backend container talks to Ollama through `http://ollama:11434`.
+Inside Docker, the backend talks to Ollama at:
 
-## Environment Flags
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `OLLAMA_HOST` | `http://127.0.0.1:11434` locally, `http://ollama:11434` in Docker | Ollama server URL |
-| `GEMMA_FAST_MODEL` | `gemma4:e2b` | Gemma model used by the fast pipeline |
-| `FAST_BACKEND_PORT` | `8011` | Backend API port |
-| `FAST_USE_MINILM` | `0` | Set to `1` to use MiniLM embeddings and ChromaDB |
-| `FAST_SKIP_GEMMA_ON_UPLOAD` | `1` | Keeps uploads fast by using deterministic extraction |
-| `HF_HOME` | `backend/.hf-cache` | Hugging Face cache path |
+```text
+http://ollama:11434
+```
 
 ## API Highlights
 
-- `GET /health` - backend health.
-- `GET /model-status` - Ollama/Gemma reachability.
+- `GET /health` - backend health check.
+- `GET /model-status` - Ollama and Gemma reachability.
 - `POST /warmup` - loads Gemma and confirms it responds.
-- `POST /upload` - upload and process a PDF.
-- `POST /search` - semantic paper search.
-- `POST /hypotheses` - generate hypotheses from retrieved evidence and graph context.
-- `GET /discovery` - combined bridges, gaps, hubs, clusters, and graph stats.
-- `GET /graph/export` - graph JSON for visualization.
-- `GET /graph/bridges` - cross-paper bridge concepts.
-- `GET /graph/gaps` - candidate research gaps.
-- `GET /graph/hubs` - central concepts.
-- `GET /papers` - processed paper inventory.
+- `POST /upload` - uploads and processes a PDF.
+- `POST /search` - searches processed paper evidence.
+- `POST /hypotheses` - generates evidence-grounded research hypotheses.
+- `GET /discovery` - returns bridges, gaps, hubs, clusters, and graph stats.
+- `GET /graph/export` - exports graph JSON for visualization.
+- `GET /graph/bridges` - returns cross-paper bridge concepts.
+- `GET /graph/gaps` - returns candidate research gaps.
+- `GET /graph/hubs` - returns central concepts.
+- `GET /papers` - lists processed papers.
 
-## What Each Model Or Method Does
+## Model And Method Map
 
-- Gemma through Ollama: model warmup, hypothesis generation, and optional LLM-backed scientific reasoning.
-- Deterministic semantic analyzer: fast upload-time entity, relationship, theme, and gap extraction.
-- Lexical retrieval: default CPU-safe search path with no model download.
-- MiniLM plus ChromaDB: optional embedding retrieval path for stronger semantic search.
-- NetworkX graph engine: concept graph, bridge analytics, hub scoring, clusters, paper neighborhoods, and graph export.
-- Streamlit: manual product testing, graph visualization, and result inspection.
+| Component | Method / Model | Role |
+| --- | --- | --- |
+| PDF parsing | PyMuPDF | Extracts text from uploaded papers |
+| Chunking | Custom section-aware chunker | Splits papers into searchable evidence |
+| Upload-time extraction | Deterministic semantic analyzer | Fast concept, relationship, theme, and gap extraction |
+| Default retrieval | Lexical scoring | CPU-safe search with no model download |
+| Optional retrieval | MiniLM + ChromaDB | Stronger semantic search when enabled |
+| Graph analytics | NetworkX `MultiDiGraph` | Bridges, hubs, clusters, gaps, paper neighborhoods |
+| Reasoning | Gemma via Ollama | Warmup, useful response checks, hypothesis generation |
+| Interface | Streamlit | Researcher-facing dashboard and graph visualization |
 
-## MVP
+## MVP Definition
 
-The MVP demonstrates a complete local scientific discovery loop:
+The MVP proves the complete discovery loop:
 
-1. Upload two or more research papers.
-2. Extract concepts and relationships.
-3. Build a knowledge graph.
-4. Search across paper evidence.
-5. Find shared concepts between papers.
-6. Surface bridge concepts, gaps, hubs, and clusters.
-7. Generate hypotheses grounded in the processed corpus.
-8. Visualize paper-to-concept and inter-paper concept graphs.
+1. Upload multiple papers.
+2. Parse and chunk each paper.
+3. Extract scientific concepts.
+4. Build a graph connecting papers and concepts.
+5. Search across the uploaded corpus.
+6. Find cross-paper concept bridges.
+7. Surface candidate research gaps.
+8. Generate hypotheses grounded in evidence.
+9. Visualize the graph and inter-paper concept connections.
 
 ## Planned WOW Factors
 
 - Remote GPU Ollama support for larger Gemma models.
-- Streaming hypothesis generation with progress and time estimates.
-- Richer contradiction detection using paired evidence claims.
+- Streaming generation with visible progress and time estimates.
+- Stronger contradiction detection with paired paper claims.
 - Citation-aware novelty scoring.
-- Exportable graph snapshots for demos and reports.
-- Persistent project/session store beyond the current local JSON and Chroma state.
-- Better biomedical NER integration when GPU or higher-memory CPU environments are available.
+- Better biomedical NER when compute allows.
+- Persistent multi-project storage.
+- Exportable graph snapshots for reports and demos.
+- A polished web frontend beyond Streamlit for production use.
 
-## Notes For Collaborators
+## Why This Matters
 
-- Do not commit `.venv`, `.hf-cache`, `data`, uploaded PDFs, or local model files.
-- The old `fast_backend/` and `fast_frontend/` folders are ignored if they remain locally from development.
-- Use `backend/` and `frontend/` as the source of truth.
+Most AI paper tools help users read faster. Scientific Discovery Copilot aims higher: it helps users **think across papers**.
+
+That difference matters. Reading tools summarize what is already written. Discovery tools reveal what is not yet connected.
+
+This project is a working step toward AI systems that help researchers identify the next experiment, not just the next paragraph.
+
+## Repository Hygiene
+
+The repository has been cleaned to keep only the active product code:
+
+- `backend/` is the source of truth for the FastAPI pipeline.
+- `frontend/` is the source of truth for the Streamlit dashboard.
+- Old prototype modules and duplicate fast folders have been removed from Git.
+- Local-only folders such as `.venv`, `.hf-cache`, `data`, PDFs, and uploaded files are ignored.
+
