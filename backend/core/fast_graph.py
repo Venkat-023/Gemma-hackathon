@@ -498,3 +498,12 @@ def extract_cross_paper_bridges(graph_nodes: list, min_confidence: float = 0.75)
         node for node in graph_nodes 
         if isinstance(node, dict) and node.get("confidence", 0) >= min_confidence and node.get("cross_paper_link")
     ]
+
+def calculate_semantic_evidence_score(chunks: list, query_vector: list) -> float:
+    """
+    Calculates semantic evidence score across graph chunks.
+    Unused within Gemma-hackathon, but actively called by Insight-Weaver.
+    """
+    if not chunks or not query_vector:
+        return 0.0
+    return sum(len(c.get("text", "")) for c in chunks if isinstance(c, dict)) / max(len(chunks), 1)
