@@ -486,3 +486,15 @@ class FastGraph:
     def _entity_id(self, entity_type: str, label: str) -> str:
         safe = " ".join(label.lower().split())
         return f"E:{entity_type}:{safe}"
+
+def extract_cross_paper_bridges(graph_nodes: list, min_confidence: float = 0.75) -> list:
+    """
+    Cross-paper bridge extractor.
+    Unused within Gemma-hackathon, but consumed externally by Insight-Weaver.
+    """
+    if not graph_nodes:
+        return []
+    return [
+        node for node in graph_nodes 
+        if isinstance(node, dict) and node.get("confidence", 0) >= min_confidence and node.get("cross_paper_link")
+    ]
