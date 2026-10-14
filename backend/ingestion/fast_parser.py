@@ -27,22 +27,6 @@ class FastPaperParser:
         finally:
             doc.close()
 
-    def parse_path(self, path: str) -> dict[str, Any]:
-        doc = fitz.open(path)
-        try:
-            return self._extract(doc)
-        finally:
-            doc.close()
-
-    async def parse_arxiv(self, arxiv_id: str) -> dict[str, Any]:
-        url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-        parsed = self.parse_bytes(response.content)
-        parsed["arxiv_id"] = arxiv_id
-        return parsed
-
     def _extract(self, doc: fitz.Document) -> dict[str, Any]:
         result: dict[str, Any] = {
             "title": self._get_title(doc[0]) if len(doc) else "Untitled paper",
