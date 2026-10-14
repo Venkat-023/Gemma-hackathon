@@ -42,20 +42,6 @@ class ContradictionRequest(BaseModel):
 
 
 @app.exception_handler(GemmaUnavailableError)
-async def gemma_unavailable_handler(_, exc: GemmaUnavailableError) -> JSONResponse:
-    return JSONResponse(
-        status_code=503,
-        content={
-            "error": "Gemma/Ollama is not reachable",
-            "code": "GEMMA_UNAVAILABLE",
-            "detail": str(exc),
-            "host": gemma.host,
-            "model": gemma.model,
-        },
-    )
-
-
-@app.get("/health")
 async def health() -> dict[str, Any]:
     return {
         "status": "ok",
@@ -67,10 +53,6 @@ async def health() -> dict[str, Any]:
 
 
 @app.get("/model-status")
-async def model_status() -> dict[str, Any]:
-    return gemma.status()
-
-
 @app.post("/warmup")
 async def warmup() -> dict[str, Any]:
     started = time.perf_counter()
@@ -79,7 +61,6 @@ async def warmup() -> dict[str, Any]:
     return result
 
 
-@app.post("/upload")
 async def upload(file: UploadFile = File(...)) -> dict[str, Any]:
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="PDF only")
@@ -94,12 +75,10 @@ async def search(request: QueryRequest) -> dict[str, Any]:
     return {"results": vector_store.search(request.query, n=8)}
 
 
-@app.post("/hypotheses")
 async def hypotheses(request: QueryRequest) -> dict[str, Any]:
     return query_and_generate(request.query, request.num_hypotheses)
 
 
-@app.post("/discovery")
 async def discovery(request: QueryRequest) -> dict[str, Any]:
     return discovery_report(request.query)
 
@@ -110,41 +89,12 @@ async def connections() -> dict[str, Any]:
 
 
 @app.get("/graph/export")
-async def graph_export(max_nodes: int = 500) -> dict[str, Any]:
-    return graph.get_full_export(max_nodes=max_nodes)
-
-
 @app.get("/graph/bridges")
-async def graph_bridges(top_n: int = 20) -> dict[str, Any]:
-    return {"bridges": graph.find_cross_paper_bridges(top_n=top_n)}
-
-
 @app.get("/graph/clusters")
-async def graph_clusters() -> dict[str, Any]:
-    return {"clusters": graph.get_concept_clusters()}
-
-
 @app.get("/graph/gaps")
-async def graph_gaps(top_n: int = 10) -> dict[str, Any]:
-    return {"gaps": graph.find_research_gaps(top_n=top_n)}
-
-
 @app.get("/graph/hubs")
-async def graph_hubs(top_n: int = 15) -> dict[str, Any]:
-    return {"hubs": graph.get_hub_concepts(top_n=top_n)}
-
-
 @app.get("/graph")
-async def full_graph() -> dict[str, Any]:
-    return graph.to_frontend_json()
-
-
 @app.get("/graph/{paper_id}")
-async def paper_graph(paper_id: int) -> dict[str, Any]:
-    return graph.to_frontend_json(paper_id=paper_id)
-
-
-@app.post("/contradictions")
 async def contradictions(request: ContradictionRequest) -> dict[str, Any]:
     chunks_a = vector_store.search(request.topic, n=4, paper_id=request.paper_id_a)
     chunks_b = vector_store.search(request.topic, n=4, paper_id=request.paper_id_b)

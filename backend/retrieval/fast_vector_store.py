@@ -56,8 +56,6 @@ class FastVectorStore:
             embeddings = self.embedder.embed_batch(texts)
             self.collection.upsert(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
         except Exception as exc:
-            self._last_embedding_error = str(exc)
-
     def search(
         self,
         query: str,
